@@ -1,0 +1,11 @@
+# Web framework
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.27,<1.0
+
+# dots.tts (installed from GitHub source with constraints from the same repo)
+dots-tts @ git+https://github.com/rednote-hilab/dots.tts.git@main
+
+# Note: torch / CUDA version is pinned by dots.tts's constraints/recommended.txt
+# Install command (see README):
+#   pip install -r backend/requirements.txt \
+#     -c https://raw.githubusercontent.com/rednote-hilab/dots.tts/main/constraints/recommended.txt
