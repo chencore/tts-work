@@ -1,122 +1,73 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from "react";
+import { ApiError, getHealth } from "./api";
+import type { HealthResponse } from "./api";
 
-function App() {
-  const [count, setCount] = useState(0)
+type View =
+  | { kind: "waiting" }
+  | { kind: "loading"; elapsedMs: number }
+  | { kind: "ready"; gpu: string | null; model: string }
+  | { kind: "error"; message: string };
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function fromHealth(h: HealthResponse): View {
+  if (h.status === "ready") {
+    return { kind: "ready", gpu: h.gpu, model: h.model };
+  }
+  if (h.status === "error") {
+    return { kind: "error", message: h.error ?? "unknown error" };
+  }
+  return { kind: "loading", elapsedMs: h.elapsed_ms };
 }
 
-export default App
+function fromError(e: unknown): View {
+  if (e instanceof ApiError && e.kind === "network") {
+    return { kind: "waiting" };
+  }
+  return {
+    kind: "error",
+    message: e instanceof Error ? e.message : String(e),
+  };
+}
+
+export default function App() {
+  const [view, setView] = useState<View>({ kind: "waiting" });
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const h = await getHealth();
+        if (!cancelled) setView(fromHealth(h));
+      } catch (e) {
+        if (!cancelled) setView(fromError(e));
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  return (
+    <main className="app">
+      <h1>tts-work</h1>
+      {view.kind === "waiting" && (
+        <p className="status waiting">等待后端启动...</p>
+      )}
+      {view.kind === "loading" && (
+        <p className="status loading">
+          模型加载中（{(view.elapsedMs / 1000).toFixed(1)}s）
+        </p>
+      )}
+      {view.kind === "ready" && (
+        <p className="status ready">
+          ✓ 就绪 · GPU: {view.gpu ?? "未知"} · 模型: {view.model}
+        </p>
+      )}
+      {view.kind === "error" && (
+        <p className="status error">后端错误：{view.message}</p>
+      )}
+    </main>
+  );
+}

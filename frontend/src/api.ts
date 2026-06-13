@@ -12,12 +12,11 @@ export interface HealthResponse {
 }
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly kind: "network" | "http" | "parse",
-  ) {
+  readonly kind: "network" | "http" | "parse";
+  constructor(message: string, kind: "network" | "http" | "parse") {
     super(message);
     this.name = "ApiError";
+    this.kind = kind;
   }
 }
 
