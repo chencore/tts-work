@@ -271,6 +271,115 @@ openspec/changes/add-user-auth/
 
 ---
 
+## 开发指南（v0.1）
+
+### 一次性环境准备
+
+**1. 创建 conda 环境（Python 3.10）：**
+
+```bash
+conda create -n dots_tts python=3.10 -y
+conda activate dots_tts
+python -m pip install --upgrade pip
+```
+
+**2. 安装 Python 后端依赖：**
+
+dots.tts 仓库托管在 GitHub，本机 git proxy 若失效会卡住。如已 clone 过 dots.tts 仓库（推荐路径 `D:/code/dots.tts`），从本地安装更快：
+
+```bash
+# 方式 A：从本地 clone 安装（推荐，避开 git proxy 问题）
+pip install fastapi "uvicorn[standard]"
+pip install -e D:/code/dots.tts -c D:/code/dots.tts/constraints/recommended.txt
+
+# 方式 B：从 GitHub 直装（需要 git proxy 正常或全局取消代理）
+pip install -r backend/requirements.txt \
+  -c https://raw.githubusercontent.com/rednote-hilab/dots.tts/main/constraints/recommended.txt
+```
+
+> 首次会下载 PyTorch + CUDA wheels（数 GB），耗时 5-15 分钟。
+
+**3. 验证 CUDA 可用：**
+
+```bash
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+如果输出 `False`，先排查 CUDA / 驱动问题再继续。
+
+**4. 安装前端依赖：**
+
+```bash
+cd frontend
+npm install
+```
+
+**5. 验证 Rust 工具链（Tauri 需要）：**
+
+```bash
+cargo --version
+```
+
+未安装参考 https://tauri.app/start/prerequisites/ 。
+
+### 日常开发（两个终端）
+
+**终端 1 — Python 后端：**
+
+```bash
+conda activate dots_tts
+python -m backend.app
+```
+
+后端启动时会同步加载 dots.tts 模型（首次需从 HuggingFace 下载 ~5GB）。加载完成后 `http://127.0.0.1:8765/api/health` 返回 `status=ready`。
+
+**终端 2 — Tauri 桌面壳（自动拉起 Vite）：**
+
+```bash
+tauri dev
+# 或：cd src-tauri && cargo tauri dev
+```
+
+弹出桌面窗口，前端每秒轮询 `/api/health` 显示状态。
+
+### 故障排查
+
+**HF 模型下载太慢：** 设置镜像：
+
+```bash
+# Windows PowerShell
+$env:HF_ENDPOINT = "https://hf-mirror.com"
+# bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
+**端口 8765 被占用：** 改环境变量：
+
+```bash
+# PowerShell
+$env:TTS_PORT = "8766"
+# bash
+export TTS_PORT=8766
+```
+
+注意：前端默认连 8765，改后端端口后需在 `frontend/.env` 里设 `VITE_API_BASE=http://127.0.0.1:8766`。
+
+**`tauri dev` 报 5173 占用：** 之前的 Vite 没关干净。关掉所有 node 进程或重启。
+
+**git proxy 报错（`Failed to connect to 127.0.0.1:50830`）：** 全局 git 代理失效。临时绕过：
+
+```bash
+git -c http.proxy= -c https.proxy= clone https://github.com/rednote-hilab/dots.tts.git
+```
+
+**npm 报 `Class extends value undefined`：** Windows 上 nvm 多版本切换留下的 PATH 污染。临时用 v24 直接路径：
+
+```bash
+export PATH="/c/Program Files (x86)/nvm/v24.15.0:$PATH"
+```
+
+---
+
 ## License
 
 MIT
