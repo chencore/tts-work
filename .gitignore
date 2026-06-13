@@ -93,6 +93,17 @@ env/
 .pytest_cache/
 .mypy_cache/
 
+# ---------- Rust / Tauri ----------
+src-tauri/target/
+src-tauri/Cargo.lock
+src-tauri/binaries/backend*
+src-tauri/gen/
+
+# ---------- HuggingFace 模型权重缓存 ----------
+models/
+hub/
+ huggingface/
+
 # ---------- Claude Code / 本地工具配置 ----------
 .claude/settings.local.json
 .claude/cache/
