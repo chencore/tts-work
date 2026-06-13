@@ -8,11 +8,12 @@
 
 | 层 | 选型 | 理由 |
 |----|------|------|
-| 后端 | Python（直调 `dots_tts` 包） | dots.tts 官方提供 Python API（`DotsTtsRuntime`），原生集成最直接 |
-| 桌面壳 | 待定（Electron / Tauri / PyWebView） | design 阶段决策，见待定项 |
-| 前端 UI | 待定（取决于桌面壳选型） | |
+| 后端 | Python 3.10 + FastAPI（本地 HTTP on `127.0.0.1:8765`） | dots.tts 官方提供 Python API（`DotsTtsRuntime`），原生集成最直接；FastAPI `/docs` 免费、可 curl 调试 |
+| 桌面壳 | Tauri 2.x（Rust） | 体积小、性能好；Electron 150MB+ 太重，PyWebView 生态小 |
+| 前端 UI | React + Vite + TypeScript | Tauri 官方默认模板、生态最大 |
+| **Python 运行环境** | **WSL2 Ubuntu-24.04 + conda env `dots_tts`** | dots.tts 经 WeTextProcessing 依赖 pynini，PyPI 无 Windows wheel；详见 §6 决策 4 |
 | 数据库 | 无（音色库用本地文件） | 个人自用，无并发，无需 DB |
-| 部署 | 纯本地桌面 App | 个人自用，无服务端，零网络 |
+| 部署 | 纯本地桌面 App（dev 阶段双终端：WSL2 后端 + Windows Tauri） | 个人自用，无服务端，零网络 |
 
 ## 2. 系统架构
 
@@ -67,10 +68,23 @@
 - **放弃的方案**：集成 Whisper 自动 ASR
 - **理由**：v0.1 聚焦最简；ASR 增加约 1GB 依赖；个人自用克隆自己/家人音色，转录已知
 
+### 决策 4：Python 后端跑在 WSL2，而非原生 Windows
+
+- **选择**：WSL2 Ubuntu-24.04 + conda env `dots_tts`（Python 3.10）
+- **放弃的方案**：原生 Windows conda / Docker
+- **理由**：dots.tts 通过 `WeTextProcessing → pynini` 依赖 OpenFst 的 Python 绑定，pynini 在 PyPI 只有源码包且用 GCC/Clang flag（`-Wno-register`），MSVC 不识别，**原生 Windows 装不上**；WSL2 与官方 Linux 平台一致，最少踩坑
+- **影响**：
+  - Python 后端进程跑在 WSL2，Tauri 壳跑在 Windows 主机
+  - 两者通过 `127.0.0.1:8765` 通信（WSL2 默认 localhost 双向转发到 Windows 主机）
+  - 项目代码继续放 Windows 文件系统（`D:\code\tts-work`），WSL2 通过 `/mnt/d/code/tts-work` 访问
+  - 模型权重缓存走 WSL2 用户 home（`~/.cache/huggingface`），Linux 文件系统下 IO 快
+  - **打包发行方式**留待 `package-release` 任务设计（v0.1 当前只考虑 dev 流）
+
 ## 7. 待定项（Open Questions）
 
-- **桌面壳技术栈**（Electron / Tauri / PyWebView）—— setup-desktop-scaffold 启动前定
+- ~~**桌面壳技术栈**（Electron / Tauri / PyWebView）~~ ✓ **已定**：Tauri 2.x（见 §1）
 - **音色库存储格式**（JSON 索引 + 音频文件 / SQLite）—— voice-library 启动前定
 - **目标 OS**（Windows only / 跨平台）—— package-release 启动前定
 - **默认参数具体值**（num_steps / guidance_scale / language / seed）—— single-continuation-clone 启动前定
-- **桌面壳 ⇄ Python 后端通信方式**（HTTP / IPC）—— 随桌面壳技术栈一起定
+- ~~**桌面壳 ⇄ Python 后端通信方式**（HTTP / IPC）~~ ✓ **已定**：本地 HTTP（FastAPI on `127.0.0.1:8765`，端口可由 `TTS_PORT` 覆盖）
+- **打包发行方式**（WSL2 + conda 自动装 / Docker 镜像 / 其他）—— package-release 启动前定

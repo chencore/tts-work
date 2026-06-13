@@ -2,9 +2,11 @@
 
 ```
 <project-root>/
-├── backend/             # 后端代码
-├── frontend/            # 前端代码
-├── prototype/           # 原型设计
+├── backend/             # Python FastAPI 后端（runtime.py 加载 dots.tts、app.py 暴露 /api/health）
+├── frontend/            # React + Vite + TS 前端
+├── src-tauri/           # Tauri 2.x Rust 桌面壳
+├── scripts/             # WSL2 环境准备 / 后端启动 / 调试脚本
+├── prototype/           # 原型设计（待填）
 ├── spec/                # 项目级 spec 文档
 │   ├── requirements.md  # 整体需求
 │   ├── design.md        # 整体设计

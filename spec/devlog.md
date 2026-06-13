@@ -31,6 +31,34 @@
 
 <!-- 最新条目在最上面 -->
 
+### 2026-06-13 · setup-desktop-scaffold
+
+**摘要**：搭建桌面 App 骨架——Tauri 2.x + React+Vite+TS 前端 + FastAPI 后端 + dots.tts 模型集成，dev 流程端到端跑通（WSL2 后端 + Windows Tauri 双终端，模型加载完毕后桌面窗口显示 "就绪 · GPU: RTX 3060"）。
+
+**关键决策**：
+
+- 桌面壳选 **Tauri 2.x**（放弃 Electron 体积太大、PyWebView 生态小）
+- 前后端通信走 **本地 HTTP `127.0.0.1:8765`**（放弃 stdio JSON-RPC / Tauri events）——可 curl 调试、FastAPI `/docs` 免费、与 Tauri 解耦
+- **Python 后端跑在 WSL2 Ubuntu-24.04**（放弃原生 Windows / Docker）——dots.tts 经 `WeTextProcessing → pynini` 依赖 OpenFst Python 绑定，PyPI 无 Windows wheel（MSVC 不识别 GCC flag `-Wno-register`），WSL2 与官方 Linux 平台一致最少踩坑
+- 模型加载用**同步**而非懒加载——FastAPI 启动即触发，前端 health 能反映真实进度
+- 项目代码放 Windows 文件系统（`D:\code\tts-work`），WSL2 通过 `/mnt/d/code/tts-work` 访问；模型权重走 WSL2 home（`~/.cache/huggingface`）
+
+**踩坑 / 经验**：
+
+- Windows IE 代理残留（`ProxyServer=127.0.0.1:50830` 即便 `ProxyEnable=0`）会被 libgit2 / cargo 读取——写 `~/.cargo/config.toml` 强制空代理 + `git-fetch-with-cli = true` 绕过
+- Tauri 2.x 部分依赖（darling / plist / serde_with / time）要求 rustc 1.88+——`rustup update stable` 升到 1.96.0 解决
+- nvm 多版本切换留 PATH 污染——`npx` 报 `Class extends value undefined`，临时用 v24 直接路径绕过
+- HF 官方源下载慢——`HF_ENDPOINT=https://hf-mirror.com` 镜像加速（vocab.json 等小文件仍有 ReadTimeout，huggingface_hub 自动 retry 兜底）
+- 模型权重 ~5GB 首次下载约 13 分钟（hf-mirror）
+
+**相关产出**：
+
+- 归档位置：`openspec/changes/archive/2026-06-13-setup-desktop-scaffold/`
+- 长期 spec 同步：`openspec/specs/desktop-scaffold/spec.md`（端口/端点/状态机权威定义）
+- 项目级 spec 同步：`spec/design.md` §1 技术栈表更新、§6 新增"决策 4：WSL2 而非原生 Windows"、§7 待定项勾掉桌面壳/通信方式两项
+- 父分支：`version/v0.1`
+- 后续待办：打包发行方式（WSL2 + conda 自动装 / Docker）留待 `package-release` 任务设计
+
 ### 2026-06-13 · v0.1-kickoff
 
 **摘要**：v0.1 版本 kickoff——确立个人自用本地语音克隆桌面应用范围，写入项目级 spec。
