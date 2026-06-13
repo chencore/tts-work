@@ -273,96 +273,111 @@ openspec/changes/add-user-auth/
 
 ## 开发指南（v0.1）
 
+> **架构关键点：** Python 后端跑在 **WSL2 Ubuntu-24.04**（dots.tts 依赖 pynini，PyPI 无 Windows wheel），Tauri 前端跑在 Windows，两者通过 localhost:8765 通信（WSL2 默认转发）。
+
 ### 一次性环境准备
 
-**1. 创建 conda 环境（Python 3.10）：**
+#### A. Windows 侧
 
-```bash
-conda create -n dots_tts python=3.10 -y
-conda activate dots_tts
-python -m pip install --upgrade pip
-```
+1. **clone 项目 + dots.tts 源码**（dots.tts 走本地安装，避开 git proxy 问题）：
 
-**2. 安装 Python 后端依赖：**
+   ```bash
+   git clone https://github.com/<you>/tts-work.git D:/code/tts-work
+   git -c http.proxy= -c https.proxy= clone https://github.com/rednote-hilab/dots.tts.git D:/code/dots.tts
+   ```
 
-dots.tts 仓库托管在 GitHub，本机 git proxy 若失效会卡住。如已 clone 过 dots.tts 仓库（推荐路径 `D:/code/dots.tts`），从本地安装更快：
+2. **装 Node.js / Rust / Tauri CLI**（详见 https://tauri.app/start/prerequisites/）：
 
-```bash
-# 方式 A：从本地 clone 安装（推荐，避开 git proxy 问题）
-pip install fastapi "uvicorn[standard]"
-pip install -e D:/code/dots.tts -c D:/code/dots.tts/constraints/recommended.txt
+   ```bash
+   node --version    # 任意 18+ 即可
+   cargo --version   # 通过 https://rustup.rs 安装
+   npm install -g @tauri-apps/cli
+   ```
 
-# 方式 B：从 GitHub 直装（需要 git proxy 正常或全局取消代理）
-pip install -r backend/requirements.txt \
-  -c https://raw.githubusercontent.com/rednote-hilab/dots.tts/main/constraints/recommended.txt
-```
+3. **装前端依赖**：
 
-> 首次会下载 PyTorch + CUDA wheels（数 GB），耗时 5-15 分钟。
+   ```bash
+   cd D:/code/tts-work/frontend
+   npm install
+   ```
 
-**3. 验证 CUDA 可用：**
+#### B. WSL2 侧
 
-```bash
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
-```
+1. **确认 WSL2 已装且有 Ubuntu**：
 
-如果输出 `False`，先排查 CUDA / 驱动问题再继续。
+   ```powershell
+   wsl --status
+   wsl --list --verbose
+   # 期望看到 Ubuntu-24.04（或类似版本）
+   ```
 
-**4. 安装前端依赖：**
+   没有就 `wsl --install -d Ubuntu-24.04`。
 
-```bash
-cd frontend
-npm install
-```
+2. **跑仓库里的两条准备脚本**（在 Windows 终端里执行，调用 WSL2）：
 
-**5. 验证 Rust 工具链（Tauri 需要）：**
+   ```bash
+   # 装 miniconda（如果 WSL2 里没有 conda）
+   wsl -d Ubuntu-24.04 -- bash /mnt/d/code/tts-work/scripts/wsl_install_conda.sh
 
-```bash
-cargo --version
-```
+   # 创建 dots_tts conda env + 装 dots.tts（含 torch+CUDA、WeTextProcessing 等）
+   wsl -d Ubuntu-24.04 -- bash /mnt/d/code/tts-work/scripts/wsl_install_dotstts.sh
+   ```
 
-未安装参考 https://tauri.app/start/prerequisites/ 。
+   首次会下载 PyTorch + CUDA wheels（数 GB），耗时 5-15 分钟。脚本内部用清华 PyPI 镜像加速。
+
+3. **验证 GPU 可见**（应该看到 `cuda True <GPU 名字>`）：
+
+   ```bash
+   wsl -d Ubuntu-24.04 -- bash -c "source ~/miniconda3/etc/profile.d/conda.sh && conda activate dots_tts && python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))'"
+   ```
 
 ### 日常开发（两个终端）
 
-**终端 1 — Python 后端：**
+**终端 1（WSL2）— Python 后端：**
 
 ```bash
+wsl -d Ubuntu-24.04
+# 进入 WSL2 后：
 conda activate dots_tts
+cd /mnt/d/code/tts-work
 python -m backend.app
 ```
 
 后端启动时会同步加载 dots.tts 模型（首次需从 HuggingFace 下载 ~5GB）。加载完成后 `http://127.0.0.1:8765/api/health` 返回 `status=ready`。
 
-**终端 2 — Tauri 桌面壳（自动拉起 Vite）：**
+**终端 2（Windows）— Tauri 桌面壳（自动拉起 Vite）：**
 
 ```bash
+cd D:/code/tts-work
 tauri dev
-# 或：cd src-tauri && cargo tauri dev
 ```
 
-弹出桌面窗口，前端每秒轮询 `/api/health` 显示状态。
+弹出桌面窗口，前端每秒轮询 `/api/health` 显示状态。WSL2 的 localhost:8765 会自动转发到 Windows 主机，Tauri 无需特殊配置。
 
 ### 故障排查
 
-**HF 模型下载太慢：** 设置镜像：
+**HF 模型下载太慢：** 在 WSL2 里设置镜像：
 
 ```bash
-# Windows PowerShell
-$env:HF_ENDPOINT = "https://hf-mirror.com"
-# bash
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
-**端口 8765 被占用：** 改环境变量：
+**端口 8765 被占用：** 改环境变量（WSL2 里）：
 
 ```bash
-# PowerShell
-$env:TTS_PORT = "8766"
-# bash
 export TTS_PORT=8766
 ```
 
 注意：前端默认连 8765，改后端端口后需在 `frontend/.env` 里设 `VITE_API_BASE=http://127.0.0.1:8766`。
+
+**WSL2 后端起不来 / 前端 fetch 报网络错误：** 检查 WSL2 网络转发：
+
+```bash
+# 在 Windows 上 curl WSL2 后端
+curl http://127.0.0.1:8765/api/health
+```
+
+不通的话重启 WSL2：`wsl --shutdown` 然后重新启动。
 
 **`tauri dev` 报 5173 占用：** 之前的 Vite 没关干净。关掉所有 node 进程或重启。
 

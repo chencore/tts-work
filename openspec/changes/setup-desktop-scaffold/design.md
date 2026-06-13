@@ -7,8 +7,19 @@
 | 桌面壳 | Tauri 2.x | Electron（重 150MB+）/ PyWebView（生态小） | 体积小、性能好、Rust 壳稳定 |
 | 前端框架 | React + Vite + TS | Vue / Svelte | Tauri 官方默认模板、生态最大 |
 | 前后端通信 | 本地 HTTP (FastAPI) | stdio JSON-RPC / Tauri events | 可 curl 调试、FastAPI `/docs` 免费、与 Tauri 解耦 |
-| Python 环境 | conda env `dots_tts` (Python 3.10) | base 3.12 / uv | 与 dots.tts 官方一致，避免版本不兼容 |
+| **Python 运行环境** | **WSL2 Ubuntu-24.04 + conda env `dots_tts` (Python 3.10)** | 原生 Windows conda（pynini 装不上）/ Docker | dots.tts 通过 WeTextProcessing 依赖 pynini，PyPI 无 Windows wheel；WSL2 与官方 Linux 平台一致，最少踩坑 |
 | 端口 | 固定 `127.0.0.1:8765` | 动态扫描 | 个人单用户场景，冲突时改环境变量 `TTS_PORT` |
+
+### 关键架构决策：WSL2 而非原生 Windows
+
+dots.tts 通过 `WeTextProcessing → pynini` 依赖 OpenFst 的 Python 绑定。pynini 在 PyPI 上**只有源码包**，构建时用 GCC/Clang flag（`-Wno-register`），MSVC 不识别，**原生 Windows 装不上**。WSL2 提供原生 Linux 环境绕过该问题，同时 NVIDIA 为 WSL2 提供 CUDA 驱动支持，GPU 性能与原生接近。
+
+**影响：**
+
+- Python 后端进程跑在 WSL2，Tauri 壳跑在 Windows 主机
+- 两者通过 `127.0.0.1:8765` 通信（WSL2 默认 localhost 双向转发到 Windows 主机）
+- 项目代码继续放 Windows 文件系统（`D:\code\tts-work`），WSL2 通过 `/mnt/d/code/tts-work` 访问——文件可被两端工具读写
+- 模型权重缓存走 WSL2 用户 home（`~/.cache/huggingface`），Linux 文件系统下 IO 快
 
 ## 2. 项目结构
 
@@ -83,20 +94,26 @@
 
 ## 4. dev 工作流
 
-```bash
-# 一次性环境准备
-conda create -n dots_tts python=3.10 -y
-conda activate dots_tts
-pip install -r backend/requirements.txt \
-  -c https://raw.githubusercontent.com/rednote-hilab/dots.tts/main/requirements/constraints.txt
-cd frontend && npm install
+**一次性准备：**
 
-# 日常 dev（两终端）
-# T1：Python 后端
-conda activate dots_tts && python -m backend.app
-# T2：Tauri + Vite
-cd src-tauri && cargo tauri dev
+1. Windows 上：clone 项目 (`D:\code\tts-work`)；clone dots.tts 源码 (`D:\code\dots.tts`)；装好 Node.js、Rust、Tauri CLI
+2. WSL2 Ubuntu-24.04：跑 `scripts/wsl_install_conda.sh` 装 miniconda；跑 `scripts/wsl_install_dotstts.sh` 创建 `dots_tts` conda env 并装好所有 Python 依赖
+
+**日常 dev（两个终端，分属 Windows / WSL2）：**
+
+```bash
+# 终端 1（WSL2）：Python 后端
+wsl -d Ubuntu-24.04
+conda activate dots_tts
+cd /mnt/d/code/tts-work
+python -m backend.app
+
+# 终端 2（Windows PowerShell / bash）：Tauri + Vite
+cd D:\code\tts-work
+tauri dev
 ```
+
+WSL2 后端监听 `127.0.0.1:8765`，Windows 上的 Tauri 前端 fetch 这个地址时，WSL2 的 localhost 自动转发到 Windows 主机，所以前端无需任何特殊配置。
 
 ## 5. 风险与权衡
 
@@ -119,7 +136,8 @@ cd src-tauri && cargo tauri dev
 
 - 模型从 HF vs ModelScope 拉：默认 HF，下载慢可设 `HF_ENDPOINT` 切镜像
 - 端口冲突自动处理：本任务用固定端口 + 环境变量；动态扫描留待 `package-release`
-- Tauri sidecar 自动 spawn Python：本任务 dev 用两终端手动起；自动化留待 `package-release` 或后续优化任务
+- Tauri sidecar 自动 spawn Python（在 WSL2 里）：本任务 dev 用两终端手动起；自动化留待 `package-release` 或后续优化任务
+- **打包发行方式**：v0.1 最终装到用户机器时，需要自动装 WSL2 + conda env + dots.tts 依赖，或者用 Docker 镜像方案。这部分留待 `package-release` 任务详细设计
 
 ## 7. 待提升到 `spec/design.md` 的条目（archive 时处理）
 

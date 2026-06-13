@@ -4,9 +4,9 @@
 
 **Goal:** 搭建 v0.1 桌面应用的技术底盘——Tauri + React + TS 前端 + Python FastAPI 后端 + dots.tts 模型常驻加载，前后端通过本地 HTTP 通信。完成后整个应用骨架可启动，但尚无 TTS 合成功能。
 
-**Architecture:** Python FastAPI 后端启动时同步加载 dots.tts 模型并常驻 GPU，暴露 `/api/health` 让前端轮询状态。React 前端通过 fetch 调本地 127.0.0.1:8765。Tauri 壳只负责装窗口。dev 模式下 Python 和 Tauri 分别在两个终端启动。
+**Architecture:** Python FastAPI 后端启动时同步加载 dots.tts 模型并常驻 GPU，暴露 `/api/health` 让前端轮询状态。React 前端通过 fetch 调本地 127.0.0.1:8765。Tauri 壳只负责装窗口。**Python 后端跑在 WSL2 Ubuntu-24.04**（dots.tts 通过 WeTextProcessing 依赖 pynini，PyPI 无 Windows wheel），Tauri + React 跑在 Windows，WSL2 默认 localhost 双向转发保证两端通信。dev 模式下 Python（WSL2 终端）和 Tauri（Windows 终端）分别在两个终端启动。
 
-**Tech Stack:** Tauri 2.x · React 18 + Vite 5 + TypeScript 5 · Python 3.10 (conda env `dots_tts`) · FastAPI + Uvicorn · dots_tts (from git) · PyTorch with CUDA
+**Tech Stack:** Tauri 2.x · React 18 + Vite 5 + TypeScript 5 · Python 3.10 (conda env `dots_tts` **in WSL2**) · FastAPI + Uvicorn · dots_tts (from local clone) · PyTorch with CUDA (WSL2 CUDA driver)
 
 **Spec reference:** [openspec/changes/setup-desktop-scaffold/design.md](design.md)
 
