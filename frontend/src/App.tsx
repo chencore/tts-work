@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, getHealth } from "./api";
 import type { HealthResponse } from "./api";
+import ClonePage from "./pages/ClonePage";
 
 type View =
   | { kind: "waiting" }
@@ -61,9 +62,12 @@ export default function App() {
         </p>
       )}
       {view.kind === "ready" && (
-        <p className="status ready">
-          ✓ 就绪 · GPU: {view.gpu ?? "未知"} · 模型: {view.model}
-        </p>
+        <>
+          <p className="status ready">
+            ✓ 就绪 · GPU: {view.gpu ?? "未知"} · 模型: {view.model}
+          </p>
+          <ClonePage />
+        </>
       )}
       {view.kind === "error" && (
         <p className="status error">后端错误：{view.message}</p>
