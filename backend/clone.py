@@ -57,8 +57,8 @@ def synthesize_clone(
     if not prompt_text.strip():
         raise HTTPException(status_code=422, detail="参考转录不能为空")
 
-    runtime = get_runtime()
     try:
+        runtime = get_runtime()
         result = runtime.generate(
             text=text,
             prompt_audio_path=prompt_audio_path,
