@@ -41,7 +41,7 @@
 
 - x-vector-only / random-voice 克隆（仅 continuation）
 - ASR 自动转录（参考转录手输）
-- 参数调节面板（用默认 num_steps=10, guidance=1.0, language=ZH/none, seed=42）
+- 参数调节面板（仅暴露 num_steps / guidance_scale / language 三项，默认 num_steps=10, guidance_scale=1.2, language=zh；不暴露 speaker_scale / ode_method / template / seed 等其他参数；去掉 seed 概念，dots.tts API 不支持且 ODE 求解本不可严格复现） `[v0.1 修订：取代原"用默认 num_steps=10, guidance=1.0, language=ZH/none, seed=42"，由 single-continuation-clone 变更同步]`
 - 历史记录
 - fine-tuning / 流式合成
 - 多语言（仅中文，中英混排留待后续）
