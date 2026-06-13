@@ -393,6 +393,22 @@ git -c http.proxy= -c https.proxy= clone https://github.com/rednote-hilab/dots.t
 export PATH="/c/Program Files (x86)/nvm/v24.15.0:$PATH"
 ```
 
+**cargo 报 `Failed to connect to 127.0.0.1 port 50830`（首次 `tauri dev`）：** Windows 系统代理（IE 选项）里残留了失效的 ProxyServer。即便 `ProxyEnable=0`，libgit2 仍会读取。写一个 `~/.cargo/config.toml` 强制空代理：
+
+```toml
+[http]
+proxy = ""
+
+[net]
+git-fetch-with-cli = true
+```
+
+**cargo 报 `rustc 1.87.0 is not supported by the following packages`：** Tauri 2.x 的某些依赖需要更新 Rust。升级 stable 工具链：
+
+```bash
+rustup update stable
+```
+
 ---
 
 ## License
