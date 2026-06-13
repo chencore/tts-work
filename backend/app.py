@@ -11,10 +11,11 @@ import os
 import time
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
-from backend import runtime
+from backend import clone, runtime
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,6 +43,28 @@ def health() -> dict:
         "elapsed_ms": int((time.time() - state.load_started_at) * 1000),
         "error": state.error,
     }
+
+
+class CloneRequest(BaseModel):
+    text: str = Field(..., min_length=1)
+    prompt_audio_path: str = Field(..., min_length=1)
+    prompt_text: str = Field(..., min_length=1)
+    num_steps: int = Field(clone.DEFAULT_NUM_STEPS, ge=1, le=100)
+    guidance_scale: float = Field(clone.DEFAULT_GUIDANCE, ge=0.0, le=10.0)
+    language: str = Field("zh", pattern="^(zh|none)$")
+
+
+@app.post("/api/clone")
+def clone_route(req: CloneRequest) -> Response:
+    wav_bytes = clone.synthesize_clone(
+        text=req.text,
+        prompt_audio_path=req.prompt_audio_path,
+        prompt_text=req.prompt_text,
+        num_steps=req.num_steps,
+        guidance_scale=req.guidance_scale,
+        language=req.language,
+    )
+    return Response(content=wav_bytes, media_type="audio/wav")
 
 
 def main() -> None:
