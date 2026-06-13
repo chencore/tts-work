@@ -9,3 +9,9 @@ dots-tts @ git+https://github.com/rednote-hilab/dots.tts.git@main
 # Install command (see README):
 #   pip install -r backend/requirements.txt \
 #     -c https://raw.githubusercontent.com/rednote-hilab/dots.tts/main/constraints/recommended.txt
+
+# Audio encoding (transitive via librosa, but pinned explicitly for stability)
+soundfile>=0.12,<1.0
+
+# Dev: pytest for backend unit tests
+pytest>=8.0,<10.0
