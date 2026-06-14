@@ -25,13 +25,13 @@ if errorlevel 1 (
 curl -s http://127.0.0.1:8765/api/health >nul 2>&1
 if errorlevel 1 (
     echo [1/2] Starting backend in WSL2...
-    start "tts-work backend" cmd /k "call \"%~dp0start-backend.bat\""
+    start "tts-work backend" "%~dp0start-backend.bat"
 ) else (
     echo [1/2] Backend already running, skipping.
 )
 
 echo [2/2] Starting frontend...
-start "tts-work frontend" cmd /k "call \"%~dp0start-frontend.bat\""
+start "tts-work frontend" "%~dp0start-frontend.bat"
 
 echo.
 echo Both processes launched in separate windows.
