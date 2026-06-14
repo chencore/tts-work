@@ -3,6 +3,10 @@
 This module wraps `dots.tts.runtime.generate()`, encodes the resulting
 torch Tensor as 16-bit PCM wav bytes via soundfile, and normalizes errors
 to fastapi.HTTPException with appropriate status codes.
+
+Long target texts are transparently split into shorter chunks, each
+synthesized with the same reference prompt, and the resulting audio is
+concatenated. This keeps peak VRAM usage low on consumer GPUs.
 """
 
 from __future__ import annotations
@@ -16,10 +20,13 @@ from fastapi import HTTPException
 
 from .paths import validate_prompt_audio
 from .runtime import get_runtime
+from .text_splitter import split_text
 
 DEFAULT_NUM_STEPS = 10
 DEFAULT_GUIDANCE = 1.2
 DEFAULT_LANGUAGE: Literal["zh", "none"] = "zh"
+# Target texts longer than this are split into chunks before synthesis.
+SEGMENT_THRESHOLD_CHARS = 60
 
 
 def synthesize_clone(
@@ -58,10 +65,75 @@ def synthesize_clone(
     if not prompt_text.strip():
         raise HTTPException(status_code=422, detail="参考转录不能为空")
 
+    runtime = get_runtime()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    chunks = split_text(text, max_chars=SEGMENT_THRESHOLD_CHARS)
+    if len(chunks) == 1:
+        audio, sample_rate = _generate_one(
+            runtime,
+            text=chunks[0],
+            prompt_audio_path=prompt_audio_path,
+            prompt_text=prompt_text,
+            num_steps=num_steps,
+            guidance_scale=guidance_scale,
+            language=language,
+        )
+    else:
+        audio_segments: list[torch.Tensor] = []
+        sample_rate: int | None = None
+        for idx, chunk in enumerate(chunks, 1):
+            try:
+                seg_audio, seg_sr = _generate_one(
+                    runtime,
+                    text=chunk,
+                    prompt_audio_path=prompt_audio_path,
+                    prompt_text=prompt_text,
+                    num_steps=num_steps,
+                    guidance_scale=guidance_scale,
+                    language=language,
+                )
+            except HTTPException:
+                raise
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"第 {idx}/{len(chunks)} 段合成失败：{type(e).__name__}: {e}",
+                )
+            if sample_rate is None:
+                sample_rate = seg_sr
+            elif sample_rate != seg_sr:
+                raise HTTPException(
+                    status_code=500,
+                    detail="合成失败：分段采样率不一致，无法拼接",
+                )
+            audio_segments.append(seg_audio)
+        audio = torch.cat(audio_segments, dim=-1)
+
+    audio_np = audio.cpu().float().numpy()
+
+    buf = io.BytesIO()
+    sf.write(buf, audio_np, sample_rate, format="WAV", subtype="PCM_16")
+    return buf.getvalue()
+
+
+def _generate_one(
+    runtime,
+    *,
+    text: str,
+    prompt_audio_path: str,
+    prompt_text: str,
+    num_steps: int,
+    guidance_scale: float,
+    language: str,
+) -> tuple[torch.Tensor, int]:
+    """Generate audio for a single text chunk.
+
+    Returns:
+        (audio_tensor, sample_rate)
+    """
     try:
-        runtime = get_runtime()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
         result = runtime.generate(
             text=text,
             prompt_audio_path=prompt_audio_path,
@@ -110,8 +182,5 @@ def synthesize_clone(
             status_code=500,
             detail=f"合成失败：音频维度异常 {tuple(audio.shape)}，无法编码为 WAV",
         )
-    audio_np = audio.cpu().float().numpy()
 
-    buf = io.BytesIO()
-    sf.write(buf, audio_np, sample_rate, format="WAV", subtype="PCM_16")
-    return buf.getvalue()
+    return audio, sample_rate
