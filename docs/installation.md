@@ -290,8 +290,6 @@ tauri dev
 2. 编译 Rust 原生代码。
 3. 弹出桌面窗口。
 
-开发模式下，前端通过 Vite 代理访问 `/api`，无需担心 CORS。
-
 ---
 
 ## 7. 使用应用
@@ -373,7 +371,7 @@ netstat -ano | findstr :8765
 export TTS_PORT=8766
 ```
 
-开发模式下前端通过 Vite 代理自动适配；生产包需在 `frontend/.env` 中设置：
+修改后需在 `frontend/.env` 中设置：
 
 ```env
 VITE_API_BASE=http://127.0.0.1:8766
@@ -419,7 +417,24 @@ rustup update stable
 $env:PATH = "C:\Program Files (x86)\nvm\v24.15.0;$env:PATH"
 ```
 
-### 9.8 GPU 不可用
+### 9.9 合成时报 `CUDA error: out of memory`
+
+显存不足。消费级显卡（如 RTX 3060 12GB）在目标文本较长或参考音频较长时可能触发。
+
+解决方法（按推荐顺序）：
+
+1. **缩短目标文本**：一次合成的文本越短，占用的显存越少。
+2. **缩短参考音频**：参考音频过长会增加 prompt 缓存占用。
+3. **降低 `num_steps`**：在高级参数中将 `num_steps` 从 10 降到 5~8。
+4. **降低最大生成长度**：在启动后端前设置环境变量：
+   ```bash
+   export DOTS_TTS_MAX_LENGTH=300
+   python -m backend.app
+   ```
+   默认值已改为 400（dots.tts 原默认 500）。数值越小越省显存，但可合成的最大音频长度也越短。
+5. **重启后端**：每次修改 `DOTS_TTS_MAX_LENGTH` 后必须重启后端才能生效。
+
+### 9.10 GPU 不可用
 
 1. 确认已安装 NVIDIA Windows 显卡驱动。
 2. 确认 WSL2 已安装 CUDA Toolkit：
