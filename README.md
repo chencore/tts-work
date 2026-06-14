@@ -1,416 +1,220 @@
-# SpecCoding Template
+# tts-work
 
-[![License: MIT](https://img.shields.io/github/license/beautifulSoup/speccoding-template?style=flat-square&color=blue)](./LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/beautifulSoup/speccoding-template?style=flat-square&logo=github&color=yellow)](https://github.com/beautifulSoup/speccoding-template/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/beautifulSoup/speccoding-template?style=flat-square&logo=github&color=orange)](https://github.com/beautifulSoup/speccoding-template/network/members)
-[![Last Commit](https://img.shields.io/github/last-commit/beautifulSoup/speccoding-template?style=flat-square&color=green)](https://github.com/beautifulSoup/speccoding-template/commits/main)
-[![Template](https://img.shields.io/badge/use%20this-template-brightgreen?style=flat-square&logo=github)](https://github.com/beautifulSoup/speccoding-template/generate)
-
-**基于 Claude Code + OpenSpec + Superpowers 三件套的全栈 AI 开发模板。**
-
-> 让 AI 稳定交付全栈项目——告别"AI 改崩代码 / 失忆 / 跑偏"。
-
-<div align="center">
-  <img src="https://cdn.jsdelivr.net/gh/beautifulSoup/speccoding-template@main/docs/wechat-qr.jpg" width="180" alt="微信公众号二维码" />
-  <br>
-  <sub>📣 扫码关注公众号 <b>TangoAI实验室</b>，每周更新 AI 开发实战干货</sub>
-</div>
+> 基于 [dots.tts](https://github.com/rednote-hilab/dots.tts) 的 Windows 桌面语音克隆应用。
 
 ---
 
-## 这是什么
+## 项目简介
 
-一套**可直接 Clone 即用**的项目骨架，实现文章《让 AI 稳定交付全栈项目》里讲的完整工作流：
+`tts-work` 是一个单段语音克隆（Single-Segment Continuation Clone）桌面程序：
 
-- ✅ **两级 Spec 体系**：`spec/` 管项目全局，`openspec/` 管单次变更
-- ✅ **两级分支模型**：`version/v*` 承载一批需求，`feature/*` 隔离单次变更
-- ✅ **七阶段工作流**：`git branch → scaffold → brainstorm → plan → execute → archive → merge`
-- ✅ **协作姿态明确**：方案制定多问 / 列 tradeoff，执行落地尽量自主推进
-- ✅ **三工具协同**：Claude Code 执行、OpenSpec 规格、Superpowers 流程
-- ✅ **全栈骨架**：预留 backend / frontend / prototype 目录
-- ✅ **示例变更**：`openspec/changes/archive/` 里附一个完整示例，可直接照抄
+- 选择一段参考音频（支持 `wav/mp3/flac/ogg/m4a`）
+- 输入参考音频对应的文本
+- 输入想要合成的目标文本
+- 点击合成，即可生成与参考音色相似的新音频
+
+前端为 Tauri 2.x + React + TypeScript 桌面应用；后端为 Python FastAPI，跑在 WSL2 Ubuntu 中加载 dots.tts 模型并通过 GPU 推理。
 
 ---
 
-## 协作模式：设计靠人决策，执行尽量自主
+## 核心特性
 
-| 阶段 | 对应工具 | AI 姿态 |
-|------|----------|---------|
-| **方案制定** | brainstorming、writing-plans、需求澄清、架构决策 | **多问、列 tradeoff、设 checkpoint**——关键判断交给人类 |
-| **执行落地** | executing-plans、写代码、跑测试、走 git/openspec 流程 | **尽量自主推进**，方案确认后不要每一步都请示 |
+- **Windows 原生桌面体验**：Tauri 打包的轻量级桌面窗口。
+- **GPU 加速推理**：后端基于 PyTorch + CUDA，在 WSL2 中调用 NVIDIA 显卡。
+- **单段克隆**：一次选择参考音频即可合成，无需训练说话人模型。
+- **多格式支持**：参考音频支持常见有损/无损格式。
+- **可调参数**：`num_steps`、`guidance_scale`、`language` 等高级参数可展开调整。
+- **导出 WAV**：合成结果可直接播放或保存为 48kHz 16-bit PCM WAV。
 
-执行阶段只在四种情况下停下来请示：方案与实际冲突、不可逆操作（如 `git push --force` / 改 `main`）、反复尝试同一思路失败、CLAUDE.md 明确要求人工确认的节点（如归档时的 design 提升）。详见 `CLAUDE.md`。
+---
 
-**一句话**：设计前多问，执行中少问。
+## 架构
+
+```
+┌─────────────────────────────────────┐
+│         Windows 桌面前端             │
+│   Tauri 2.x + React + TypeScript    │
+│            localhost:5173           │
+└──────────────┬──────────────────────┘
+               │ HTTP /api/health
+               │ HTTP POST /api/clone
+               ▼
+┌─────────────────────────────────────┐
+│   WSL2 Ubuntu-24.04                 │
+│   Python FastAPI + dots.tts         │
+│   localhost:8765                    │
+└─────────────────────────────────────┘
+```
+
+- 前端通过 `fetch` 调用后端的 `/api/health` 与 `/api/clone`。
+- 后端加载 `rednote-hilab/dots.tts-base` 模型，首次启动需下载约 5 GB 模型文件。
+- 前端选择的 Windows 音频路径会自动转换为 WSL2 `/mnt/d/...` 路径传给后端。
 
 ---
 
 ## 快速开始
 
-### 1. 使用本模板
+详细安装步骤请见 [docs/installation.md](docs/installation.md)。以下是最小启动流程：
 
-**方式 A：GitHub「Use this template」** — 推荐，创建一个干净的新仓库
+### 1. 环境要求
 
-**方式 B：Clone 后去掉历史**
+- Windows 10/11 + WSL2 + Ubuntu-24.04
+- NVIDIA 显卡 + 驱动 + WSL2 CUDA
+- Git、Node.js 18+、Rust、Tauri CLI
 
-```bash
-git clone https://github.com/beautifulSoup/speccoding-template.git my-project
-cd my-project
-rm -rf .git
-git init && git add -A && git commit -m "chore: bootstrap from SpecCoding template"
+### 2. 克隆代码
+
+```powershell
+git clone https://github.com/<your-username>/tts-work.git D:/code/tts-work
+git -c http.proxy= -c https.proxy= clone https://github.com/rednote-hilab/dots.tts.git D:/code/dots.tts
 ```
 
-### 2. 安装前置工具
+### 3. 安装后端（WSL2）
 
-```bash
-# OpenSpec 中文版（核心规格管理工具）
-npm install -g @openspec-cn/cli
+```powershell
+# 安装 miniconda
+wsl -d Ubuntu-24.04 -- bash /mnt/d/code/tts-work/scripts/wsl_install_conda.sh
 
-# Claude Code
-npm install -g @anthropic-ai/claude-code
-
-# Superpowers skills（让 /superpowers:brainstorming 等命令可用）
-# 安装方式详见 Superpowers 项目文档
+# 创建 dots_tts 环境并安装 dots.tts
+wsl -d Ubuntu-24.04 -- bash /mnt/d/code/tts-work/scripts/wsl_install_dotstts.sh
 ```
 
-### 3. 版本 kickoff（Phase 0）
+### 4. 安装前端（Windows）
 
-每个版本启动一次。**先开版本分支，再让 AI 进入讨论阶段**——不要让 AI 一上来就动 spec 文件。
-
-```bash
-# 从 main 拉版本分支（命名必须为 version/v<semver>）
-git checkout main && git pull
-git checkout -b version/v0.1
+```powershell
+cd D:/code/tts-work/frontend
+npm install
 ```
 
-然后在 Claude Code 中触发 kickoff：
+### 5. 启动应用
 
-> "开始做 v0.1 版本的 kickoff"
+终端 1 — 后端：
 
-AI 会按 CLAUDE.md 里的「维护节奏」执行：
-
-1. **前置检查**：读分支版本号、读 `git config --get user.initials` 拿你的缩写、提醒先 `git pull`
-2. **多轮讨论澄清**：把本次要写入的需求边界一条条聊清楚（可配合 `/superpowers:brainstorming`），未确认前不动任何 spec 文档
-3. **本地化 confirm**：AI 汇总"新增 X 条 / 修订 Y 条 / 架构是否动"，等你说"确认"
-4. **批量写入** `requirements.md` / `tasks.md` /（必要时）`design.md` / `devlog.md`，每条需求带版本标签 `[v0.1 新增]` 与唯一 ID `R-v0.1-<缩写>-<序号>`，修订老需求时旧条目保留并标"已由 X 取代"
-
-> 💡 在 `main` 等非版本分支上触发 kickoff 时，AI 会降级为"无版本"模式（用日期作标签）。完整规则见 `CLAUDE.md` 的「维护节奏 → ① 版本 kickoff」。
-
-### 4. 单任务开发循环（Phase 1~N）
-
-版本分支下每个 task 走一次完整七阶段工作流。**feature 分支从当前所在分支拉出**（通常是版本分支），合并时回到**它被拉出时的那条分支**——所以创建时必须显式记下父分支：
-
-```bash
-# 1. 创建特性分支 + 显式记录父分支
-parent=$(git rev-parse --abbrev-ref HEAD)
-git checkout -b feature/add-user-auth
-git config branch.feature/add-user-auth.parent "$parent"
-
-# 2. 脚手架
-openspec-cn new change "add-user-auth"
-
-# 3. 设计 —— Claude Code 中运行
-/superpowers:brainstorming
-# → 产出 proposal.md / design.md / specs/ 写入 openspec/changes/add-user-auth/
-
-# 4. 计划
-/superpowers:writing-plans
-# → 产出的 plan.md 必须落到 openspec/changes/add-user-auth/plan.md
-#   ⚠️ 不要让它散落到仓库根或其他位置
-
-# 5. 执行
-/superpowers:executing-plans
-# → 严格按 openspec/changes/add-user-auth/plan.md 执行
-
-# 6. 归档（在合并回父分支前完成）
-/opsx:archive
-# → 整个 add-user-auth/ 目录移入 openspec/changes/archive/
-# → AI 会扫 design.md，若含跨模块影响 / 新依赖 / 数据模型变更，
-#   会请你确认是否提升到 spec/design.md（点头才写）
-
-# 7. 合并回父分支（不一定是 main）
-parent=$(git config --get branch.$(git rev-parse --abbrev-ref HEAD).parent)
-git checkout "$parent"
-git merge feature/add-user-auth
-git branch -d feature/add-user-auth
+```powershell
+wsl -d Ubuntu-24.04 -- bash /mnt/d/code/tts-work/scripts/wsl_run_backend.sh
 ```
 
-完成后 `spec/tasks.md` 对应 task 由 AI 自动勾选 ✅，`spec/devlog.md` 自动追加一条记录（注明父分支名）。
+终端 2 — 前端：
 
-> ⚠️ **手工创建过、没记父分支**的 feature 分支：AI 在第 7 步读不到 `branch.*.parent` 配置时会向你确认目标分支，**不会**靠 reflog / merge-base 自行猜。
->
-> ⚠️ **版本分支 → `main` 的合并**由人工处理；AI 默认不碰 `main`，除非你显式要求。
-
-> **⚠️ 产出物归属铁律**：单次变更的所有产出物（proposal / design / specs / **plan** / tasks）必须统一放在 `openspec/changes/<name>/` 下，**不可散落**。这是"一键归档、可审计、可回滚"的前提。
-
----
-
-## 目录结构
-
-```
-.
-├── CLAUDE.md              # Claude Code 工作指引（重要，勿删）
-├── README.md              # 本文件
-├── .gitignore             # 全栈通用 ignore
-│
-├── spec/                  # 【项目级】spec 文档（人工主导）
-│   ├── requirements.md    #   整体需求
-│   ├── design.md          #   整体架构与设计
-│   ├── tasks.md           #   里程碑级任务清单
-│   ├── devlog.md          #   开发日志（AI 自动维护）
-│   └── structure.md       #   目录结构说明
-│
-├── openspec/              # 【需求级】单次变更 spec
-│   ├── config.yaml        #   OpenSpec 配置
-│   ├── changes/
-│   │   └── archive/       #   已完成的变更归档（附示例）
-│   └── specs/             #   单独提炼的长期规格
-│
-├── .claude/               # Claude Code 配置、命令与技能
-│   ├── commands/opsx/     #   /opsx:apply /opsx:archive 等斜杠命令
-│   └── skills/            #   OpenSpec 相关技能
-│
-├── .codebuddy/            # CodeBuddy 配置（若使用 CodeBuddy 国际版）
-│
-├── backend/               # 后端代码（待填）
-├── frontend/              # 前端代码（待填）
-└── prototype/             # 原型设计（待填）
-```
-
----
-
-## 核心原则
-
-### 1. Spec 必须分两级
-
-| 层级 | 位置 | 回答的问题 | 变更频率 |
-|------|------|-----------|---------|
-| 项目级 | `spec/` | "我们做什么产品、为什么做" | 低频，人工主导 |
-| 需求级 | `openspec/changes/<name>/` | "这次变更做什么、怎么做" | 高频，AI 产出 |
-
-**混在一起是灾难的开始**——单次变更细节会污染全局设计，全局决策会被埋在 PR 里。
-
-### 2. 谁写谁改 / 何时写
-
-项目级 spec 仅在 **版本 kickoff** 与 **openspec 归档** 两个边界上同步。变更开发过程中不动；openspec 变更内部的产出物可自由书写，不污染项目级文档。
-
-| 文档 | AI 何时可动 |
-|------|------------|
-| `spec/requirements.md` | ✅ 仅版本 kickoff 时由人工触发后批量写入（带版本标签 + R-ID） |
-| `spec/design.md` | ✅ kickoff 涉及新架构决策时；归档时检测到跨模块影响 / 新依赖 / 数据模型变更，**人工点头**后才提升 |
-| `spec/tasks.md` 内容 | ✅ 仅 kickoff 时按版本块追加（不得改他人已写的 tasks） |
-| `spec/tasks.md` 状态 | ✅ openspec 归档后自动勾选 ✅ |
-| `spec/devlog.md` | ✅ kickoff 写入摘要 + feature 合回父分支时追加 |
-| `spec/structure.md` | ✅ 添加或删除顶层目录时即时更新 |
-| `openspec/changes/*` | ✅ 工作流中由 brainstorming / writing-plans / executing-plans 自动生成 |
-
-### 3. 物理上分开"思考 / 规划 / 执行"
-
-- **brainstorming** 只产出设计文档（proposal / design / specs），**不碰代码**
-- **writing-plans** 只产出 `plan.md`，**不碰代码**
-- **executing-plans** 才动代码，而且必须严格按 `plan.md` 执行
-
-这是对抗 AI 失忆的物理防线——即使某一步 AI 上下文全丢，下一步也能从磁盘上的 spec 文档重新加载继续。
-
-### 4. 单次变更产出物归一
-
-所有单次变更产出物必须统一放在 `openspec/changes/<name>/` 下：
-
-```
-openspec/changes/add-user-auth/
-├── proposal.md        ← brainstorming 产出
-├── design.md          ← brainstorming 产出
-├── specs/auth/spec.md ← brainstorming 产出
-├── plan.md            ← writing-plans 产出（⚠️ 必须落这里）
-└── tasks.md           ← 贯穿全流程的任务清单
-```
-
-不要让 `plan.md` 散落到仓库根、`docs/`、`.claude/` 或任何其他位置——**归档 / 审计 / 回滚**都依赖这个归一原则。
-
----
-
-## 示例变更：照着抄就行
-
-`openspec/changes/archive/example-add-user-auth/` 里存了一个**完整的示例变更**，包含：
-
-- `proposal.md` — 变更提案
-- `design.md` — 技术方案
-- `specs/auth/spec.md` — 场景式规格
-- `plan.md` — writing-plans 生成的详细实现计划
-- `tasks.md` — 实现任务清单
-
-新手第一次用，直接照着这个结构填就行。
-
----
-
-## 配套文章
-
-本模板是以下文章的配套资源：
-
-> 《让 AI 稳定交付全栈项目：我的 Claude Code + OpenSpec + Superpowers 三件套实战》
-
-完整方法论、踩坑细节、更多案例请见文章原文。
-
-### 持续更新跟进
-
-<table>
-  <tr>
-    <td align="center" width="220">
-      <img src="https://cdn.jsdelivr.net/gh/beautifulSoup/speccoding-template@main/docs/wechat-qr.jpg" width="180" alt="公众号二维码" />
-    </td>
-    <td>
-      <h4>📣 公众号：TangoAI实验室</h4>
-      <p>
-        • 每周更新一篇 AI 开发实战硬核干货<br>
-        • 本模板的后续演进与踩坑记录会第一时间同步<br>
-        • 后台回复 <code>spec</code> 可拿到本仓库最新入口 + 资源清单
-      </p>
-    </td>
-  </tr>
-</table>
-
----
-
-## 开发指南（v0.1）
-
-> **架构关键点：** Python 后端跑在 **WSL2 Ubuntu-24.04**（dots.tts 依赖 pynini，PyPI 无 Windows wheel），Tauri 前端跑在 Windows，两者通过 localhost:8765 通信（WSL2 默认转发）。
-
-### 一次性环境准备
-
-#### A. Windows 侧
-
-1. **clone 项目 + dots.tts 源码**（dots.tts 走本地安装，避开 git proxy 问题）：
-
-   ```bash
-   git clone https://github.com/<you>/tts-work.git D:/code/tts-work
-   git -c http.proxy= -c https.proxy= clone https://github.com/rednote-hilab/dots.tts.git D:/code/dots.tts
-   ```
-
-2. **装 Node.js / Rust / Tauri CLI**（详见 https://tauri.app/start/prerequisites/）：
-
-   ```bash
-   node --version    # 任意 18+ 即可
-   cargo --version   # 通过 https://rustup.rs 安装
-   npm install -g @tauri-apps/cli
-   ```
-
-3. **装前端依赖**：
-
-   ```bash
-   cd D:/code/tts-work/frontend
-   npm install
-   ```
-
-#### B. WSL2 侧
-
-1. **确认 WSL2 已装且有 Ubuntu**：
-
-   ```powershell
-   wsl --status
-   wsl --list --verbose
-   # 期望看到 Ubuntu-24.04（或类似版本）
-   ```
-
-   没有就 `wsl --install -d Ubuntu-24.04`。
-
-2. **跑仓库里的两条准备脚本**（在 Windows 终端里执行，调用 WSL2）：
-
-   ```bash
-   # 装 miniconda（如果 WSL2 里没有 conda）
-   wsl -d Ubuntu-24.04 -- bash /mnt/d/code/tts-work/scripts/wsl_install_conda.sh
-
-   # 创建 dots_tts conda env + 装 dots.tts（含 torch+CUDA、WeTextProcessing 等）
-   wsl -d Ubuntu-24.04 -- bash /mnt/d/code/tts-work/scripts/wsl_install_dotstts.sh
-   ```
-
-   首次会下载 PyTorch + CUDA wheels（数 GB），耗时 5-15 分钟。脚本内部用清华 PyPI 镜像加速。
-
-3. **验证 GPU 可见**（应该看到 `cuda True <GPU 名字>`）：
-
-   ```bash
-   wsl -d Ubuntu-24.04 -- bash -c "source ~/miniconda3/etc/profile.d/conda.sh && conda activate dots_tts && python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))'"
-   ```
-
-### 日常开发（两个终端）
-
-**终端 1（WSL2）— Python 后端：**
-
-```bash
-wsl -d Ubuntu-24.04
-# 进入 WSL2 后：
-conda activate dots_tts
-cd /mnt/d/code/tts-work
-python -m backend.app
-```
-
-后端启动时会同步加载 dots.tts 模型（首次需从 HuggingFace 下载 ~5GB）。加载完成后 `http://127.0.0.1:8765/api/health` 返回 `status=ready`。
-
-**终端 2（Windows）— Tauri 桌面壳（自动拉起 Vite）：**
-
-```bash
+```powershell
 cd D:/code/tts-work
 tauri dev
 ```
 
-弹出桌面窗口，前端每秒轮询 `/api/health` 显示状态。WSL2 的 localhost:8765 会自动转发到 Windows 主机，Tauri 无需特殊配置。
+后端就绪后，桌面窗口会显示“就绪”，即可开始合成。
 
-### 故障排查
+---
 
-**HF 模型下载太慢：** 在 WSL2 里设置镜像：
+## 使用说明
 
-```bash
-export HF_ENDPOINT=https://hf-mirror.com
+1. **等待就绪**：窗口顶部状态药丸变绿后，后端模型已加载完成。
+2. **选择参考音频**：点击“选择文件”，支持 `wav/mp3/flac/ogg/m4a`。
+3. **输入参考转录**：填写参考音频对应的文本内容。
+4. **输入目标文本**：填写需要合成的中文文本。
+5. **展开高级参数**（可选）：调整 `num_steps`、`guidance_scale`、`language`。
+6. **点击合成**：首次合成可能需要 10-60 秒，后续复用 prompt 缓存会更快。
+7. **播放 / 保存**：合成完成后可试听，或导出 WAV 文件。
+
+---
+
+## 项目结构
+
+```
+.
+├── backend/             # Python FastAPI 后端
+│   ├── app.py           #   FastAPI 入口：/api/health、/api/clone
+│   ├── clone.py         #   合成逻辑：调用 dots.tts 并编码 WAV
+│   ├── runtime.py       #   模型加载与 runtime 管理
+│   ├── paths.py         #   Windows 路径转 WSL2 路径
+│   └── tests/           #   后端单元测试
+├── frontend/            # React + Vite + TypeScript 前端
+│   ├── src/
+│   │   ├── App.tsx      #   应用主框架与状态轮询
+│   │   ├── api.ts       #   HTTP 客户端
+│   │   ├── paths.ts     #   Windows → WSL2 路径转换
+│   │   ├── pages/       #   页面组件
+│   │   └── components/  #   可复用组件
+│   └── package.json
+├── src-tauri/           # Tauri 2.x Rust 桌面壳
+│   ├── Cargo.toml
+│   ├── tauri.conf.json
+│   └── src/
+├── scripts/             # WSL2 辅助脚本
+│   ├── wsl_install_conda.sh
+│   ├── wsl_install_dotstts.sh
+│   ├── wsl_run_backend.sh
+│   ├── wsl_check_env.sh
+│   └── wsl_check_cache.sh
+├── docs/                # 文档
+│   ├── installation.md  #   详细安装手册
+│   └── wechat-qr.jpg
+├── spec/                # 项目级 spec
+├── openspec/            # OpenSpec 需求级变更管理
+├── CLAUDE.md            # Claude Code 协作指引
+├── LICENSE              # MIT
+└── README.md            # 本文件
 ```
 
-**端口 8765 被占用：** 改环境变量（WSL2 里）：
+---
+
+## 开发说明
+
+### 分支模型
+
+本项目采用 `version/v*` + `feature/*` 的两级分支模型：
+
+```
+main ── version/v0.1 ── feature/single-continuation-clone
+```
+
+详细工作流见 [CLAUDE.md](CLAUDE.md)。
+
+### 后端端口
+
+默认端口 `8765`，可通过环境变量修改：
 
 ```bash
 export TTS_PORT=8766
 ```
 
-注意：前端默认连 8765，改后端端口后需在 `frontend/.env` 里设 `VITE_API_BASE=http://127.0.0.1:8766`。
+修改后需同步设置 `frontend/.env`：
 
-**WSL2 后端起不来 / 前端 fetch 报网络错误：** 检查 WSL2 网络转发：
-
-```bash
-# 在 Windows 上 curl WSL2 后端
-curl http://127.0.0.1:8765/api/health
+```env
+VITE_API_BASE=http://127.0.0.1:8766
 ```
 
-不通的话重启 WSL2：`wsl --shutdown` 然后重新启动。
+### 模型下载镜像
 
-**`tauri dev` 报 5173 占用：** 之前的 Vite 没关干净。关掉所有 node 进程或重启。
-
-**git proxy 报错（`Failed to connect to 127.0.0.1:50830`）：** 全局 git 代理失效。临时绕过：
+脚本 `wsl_run_backend.sh` 已默认设置：
 
 ```bash
-git -c http.proxy= -c https.proxy= clone https://github.com/rednote-hilab/dots.tts.git
-```
-
-**npm 报 `Class extends value undefined`：** Windows 上 nvm 多版本切换留下的 PATH 污染。临时用 v24 直接路径：
-
-```bash
-export PATH="/c/Program Files (x86)/nvm/v24.15.0:$PATH"
-```
-
-**cargo 报 `Failed to connect to 127.0.0.1 port 50830`（首次 `tauri dev`）：** Windows 系统代理（IE 选项）里残留了失效的 ProxyServer。即便 `ProxyEnable=0`，libgit2 仍会读取。写一个 `~/.cargo/config.toml` 强制空代理：
-
-```toml
-[http]
-proxy = ""
-
-[net]
-git-fetch-with-cli = true
-```
-
-**cargo 报 `rustc 1.87.0 is not supported by the following packages`：** Tauri 2.x 的某些依赖需要更新 Rust。升级 stable 工具链：
-
-```bash
-rustup update stable
+export HF_ENDPOINT=https://hf-mirror.com
 ```
 
 ---
 
-## License
+## 常见问题
+
+**Q: 前端报 fetch failed / CORS 错误**
+A: 确认后端已启动且 `curl http://127.0.0.1:8765/api/health` 返回 `ready`。后端已配置 `allow_origins=["*"]`，通常无需额外处理。
+
+**Q: 合成时报 `NoBackendError`**
+A: WSL2 缺少 ffmpeg，参考音频无法解码。执行：
+
+```bash
+wsl -d Ubuntu-24.04
+sudo apt-get update
+sudo apt-get install -y ffmpeg
+```
+
+**Q: 后端 health 不通**
+A: 重启 WSL2 网络：`wsl --shutdown`，然后重新启动后端。
+
+**Q: `tauri dev` 报 5173 端口占用**
+A: 关闭所有 node 进程或重启电脑。详见 [docs/installation.md](docs/installation.md) 故障排查章节。
+
+---
+
+## 许可证
 
 MIT
