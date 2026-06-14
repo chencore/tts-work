@@ -21,7 +21,7 @@
 > 范围：个人自用本地语音克隆桌面应用（continuation 克隆 + 音色库 + 批量合成）
 
 - [x] **setup-desktop-scaffold** — 搭建桌面 App 骨架 + Python 后端集成 dots.tts（技术选型 / 项目结构 / 模型加载常驻）✅ 2026-06-13
-- [ ] **single-continuation-clone** — 单段 continuation 克隆：UI（文本/参考音频/转录输入）+ 后端联动 + 试听 / 保存 wav
+- [x] **single-continuation-clone** — 单段 continuation 克隆：UI（文本/参考音频/转录输入）+ 后端联动 + 试听 / 保存 wav ✅ 2026-06-14
 - [ ] **voice-library** — 音色库：本地存储 + CRUD + 选择器接入克隆/批量
 - [ ] **batch-synthesis** — 批量合成：多行文本解析 + 顺序生成 + 多 wav 输出 + 进度
 - [ ] **package-release** — 桌面 App 打包发行（可安装包）

@@ -31,6 +31,32 @@
 
 <!-- 最新条目在最上面 -->
 
+### 2026-06-14 · single-continuation-clone
+
+**摘要**：实现单段 continuation 克隆端到端——桌面 UI（目标文本 / 参考音频 / 参考转录 / 高级参数）+ FastAPI `/api/clone` + dots.tts 推理 + WAV 试听与保存。
+
+**关键决策**：
+
+- 后端一次性加载模型，启动时同步阻塞，前端通过 `/api/health` 轮询状态
+- 音频路径在 Windows 前端侧转换为 WSL2 `/mnt/d/...` 格式再传给后端
+- 后端使用 `soundfile` 将 dots.tts 返回的 `torch.Tensor` 编码为 48kHz 16-bit PCM WAV bytes
+- 前端文件保存走 Tauri `plugin-fs` 的 `writeFile`（v2 不再提供 `writeBinaryFile`）
+- 开发模式下保留直接跨域调用 `http://127.0.0.1:8765`，后端 CORS 已配置 `allow_origins=["*"]`
+
+**踩坑 / 经验**：
+
+- dots.tts 返回的音频 tensor 形状可能是 `(1, 1, N)`，需要循环 squeeze -leading-1 维度后再交给 soundfile
+- WSL2 缺少 ffmpeg 时 librosa 解码 mp3/m4a 会报 `NoBackendError`，已在错误提示中引导用户安装 ffmpeg
+- Tauri dev 时旧 Vite/WebView2 进程残留会导致前端 502，需彻底清理 node.exe 与 msedgewebview2 进程
+- 首次合成耗时较长（RTF 约 36），需在前端给出“合成中（可能需 10~30 秒）”提示
+
+**相关产出**：
+
+- 变更目录：`openspec/changes/single-continuation-clone/`
+- 安装手册：[docs/installation.md](../docs/installation.md)
+- 父分支：`version/v0.1`
+- 备注：本次合并跳过了 `/opsx:archive` 归档步骤
+
 ### 2026-06-13 · setup-desktop-scaffold
 
 **摘要**：搭建桌面 App 骨架——Tauri 2.x + React+Vite+TS 前端 + FastAPI 后端 + dots.tts 模型集成，dev 流程端到端跑通（WSL2 后端 + Windows Tauri 双终端，模型加载完毕后桌面窗口显示 "就绪 · GPU: RTX 3060"）。
