@@ -50,27 +50,36 @@ export default function App() {
     };
   }, []);
 
+  const statusText = (() => {
+    if (view.kind === "waiting") return "等待后端启动";
+    if (view.kind === "loading")
+      return `加载模型 ${(view.elapsedMs / 1000).toFixed(1)}s`;
+    if (view.kind === "ready")
+      return `就绪 · ${view.gpu ?? "未知 GPU"}`;
+    return "后端错误";
+  })();
+
   return (
     <main className="app">
-      <h1>tts-work</h1>
+      <header className="app-header">
+        <h1>tts-work</h1>
+        <span className={`status ${view.kind}`}>
+          <span className="status-dot" />
+          {statusText}
+        </span>
+      </header>
+
       {view.kind === "waiting" && (
-        <p className="status waiting">等待后端启动...</p>
+        <div className="app-message">等待后端启动...</div>
       )}
       {view.kind === "loading" && (
-        <p className="status loading">
+        <div className="app-message">
           模型加载中（{(view.elapsedMs / 1000).toFixed(1)}s）
-        </p>
+        </div>
       )}
-      {view.kind === "ready" && (
-        <>
-          <p className="status ready">
-            ✓ 就绪 · GPU: {view.gpu ?? "未知"} · 模型: {view.model}
-          </p>
-          <ClonePage />
-        </>
-      )}
+      {view.kind === "ready" && <ClonePage />}
       {view.kind === "error" && (
-        <p className="status error">后端错误：{view.message}</p>
+        <div className="app-message">后端错误：{view.message}</div>
       )}
     </main>
   );

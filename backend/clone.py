@@ -73,15 +73,27 @@ def synthesize_clone(
             detail=f"文本过长或不被模型接受：{e}",
         )
     except Exception as e:
+        msg = f"{type(e).__name__}: {e}"
+        if "NoBackendError" in msg or "No backend" in msg:
+            msg = (
+                "参考音频解码失败：WSL2 缺少 ffmpeg，"
+                "无法读取 mp3/m4a 等格式。请在 WSL2 中运行："
+                "sudo apt-get update && sudo apt-get install -y ffmpeg"
+            )
         raise HTTPException(
             status_code=500,
-            detail=f"合成失败：{type(e).__name__}: {e}",
+            detail=f"合成失败：{msg}",
         )
 
     audio: "torch.Tensor" = result["audio"]  # type: ignore[name-defined]
     sample_rate: int = result["sample_rate"]
-    if audio.ndim == 2:
+    while audio.ndim > 1 and audio.shape[0] == 1:
         audio = audio.squeeze(0)
+    if audio.ndim != 1:
+        raise HTTPException(
+            status_code=500,
+            detail=f"合成失败：音频维度异常 {tuple(audio.shape)}，无法编码为 WAV",
+        )
     audio_np = audio.cpu().float().numpy()
 
     buf = io.BytesIO()

@@ -17,7 +17,7 @@ export default function AdvancedParams({ value, onChange }: Props) {
       <summary>高级参数</summary>
       <div className="advanced-params-row">
         <label>
-          num_steps:
+          num_steps
           <input
             type="number"
             min={1}
@@ -29,7 +29,7 @@ export default function AdvancedParams({ value, onChange }: Props) {
           />
         </label>
         <label>
-          guidance_scale:
+          guidance_scale
           <input
             type="number"
             step={0.1}
@@ -42,7 +42,7 @@ export default function AdvancedParams({ value, onChange }: Props) {
           />
         </label>
         <label>
-          language:
+          language
           <select
             value={value.language}
             onChange={(e) =>

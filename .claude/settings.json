@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe //C \"wsl -d Ubuntu-24.04 -- curl -s -m 3 http://127.0.0.1:8765/api/health\")",
+      "Bash(cmd.exe //C \"wsl -d Ubuntu-24.04 -- bash /mnt/d/tmp/run_backend.sh\")",
+      "Bash(export PATH=\"/c/Program Files \\(x86\\)/nvm/v24.15.0:$PATH\")",
+      "Bash(unset HTTP_PROXY HTTPS_PROXY)",
+      "Bash(tauri dev *)",
+      "Bash(cmd.exe //C \"wsl -d Ubuntu-24.04 -- bash -c 'source /home/chenke/miniconda3/etc/profile.d/conda.sh && conda activate dots_tts && python -c \\\\\"import torchaudio; print\\(torchaudio.get_audio_backend\\(\\)\\)\\\\\"'\")",
+      "Bash(cmd.exe //C \"wsl -d Ubuntu-24.04 -- ps -ef | grep 'python -m backend.app' | grep -v grep || echo no-backend\")"
+    ]
+  }
+}

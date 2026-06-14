@@ -120,14 +120,22 @@ export default function ClonePage() {
         />
       </label>
 
-      <div className="field-row">
-        <label className="field">
-          <span className="field-label">参考音频</span>
-          <button type="button" onClick={handlePickAudio}>
-            选择文件
-          </button>
-          {fileName && <span className="hint">{fileName} ✓</span>}
-        </label>
+      <div className="field">
+        <span className="field-label">参考音频</span>
+        {fileName && (
+          <div className="audio-file">
+            <div className="audio-file-icon">♪</div>
+            <span className="audio-file-name">{fileName}</span>
+            <span className="audio-file-check">✓</span>
+          </div>
+        )}
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={handlePickAudio}
+        >
+          {fileName ? "更换文件" : "选择文件"}
+        </button>
       </div>
 
       <label className="field">
@@ -158,11 +166,17 @@ export default function ClonePage() {
 
       {status.kind === "done" && (
         <div className="result">
-          <audio src={status.blobUrl} controls />
-          <button type="button" onClick={handleSave}>
-            保存到...
-          </button>
-          {savedMsg && <p className="hint">{savedMsg}</p>}
+          <audio className="result-audio" src={status.blobUrl} controls />
+          <div className="result-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleSave}
+            >
+              保存到...
+            </button>
+            {savedMsg && <p className="hint">{savedMsg}</p>}
+          </div>
         </div>
       )}
     </section>
