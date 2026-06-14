@@ -88,6 +88,10 @@ npm install
 
 ### 5. 启动应用
 
+推荐：双击项目根目录下的 [start-all.bat](start-all.bat)，会自动打开两个独立窗口分别启动后端和前端。
+
+或者手动开两个终端：
+
 终端 1 — 后端：
 
 ```powershell
