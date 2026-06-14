@@ -53,9 +53,11 @@ def _load() -> None:
         from dots_tts.runtime import DotsTtsRuntime
 
         logger.info("Loading dots.tts model: %s", _STATE.model_name)
+        max_length = int(os.environ.get("DOTS_TTS_MAX_LENGTH", "400"))
         _RUNTIME = DotsTtsRuntime.from_pretrained(
             _STATE.model_name,
             precision="bfloat16",
+            max_generate_length=max_length,
         )
         _STATE = RuntimeState(
             status="ready",

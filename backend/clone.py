@@ -11,6 +11,7 @@ import io
 from typing import Literal
 
 import soundfile as sf
+import torch
 from fastapi import HTTPException
 
 from .paths import validate_prompt_audio
@@ -59,6 +60,8 @@ def synthesize_clone(
 
     try:
         runtime = get_runtime()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         result = runtime.generate(
             text=text,
             prompt_audio_path=prompt_audio_path,
@@ -72,6 +75,19 @@ def synthesize_clone(
             status_code=413,
             detail=f"文本过长或不被模型接受：{e}",
         )
+    except RuntimeError as e:
+        msg = str(e)
+        if "out of memory" in msg.lower() or "CUDA error: out of memory" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "显存不足：当前输入对 GPU 显存压力过大。"
+                    "请尝试：1）缩短目标文本；2）缩短参考音频；"
+                    "3）降低高级参数中的 num_steps；"
+                    "4）在 WSL2 中设置 DOTS_TTS_MAX_LENGTH=300 后重启后端。"
+                ),
+            )
+        raise HTTPException(status_code=500, detail=f"合成失败：{type(e).__name__}: {e}")
     except Exception as e:
         msg = f"{type(e).__name__}: {e}"
         if "NoBackendError" in msg or "No backend" in msg:
