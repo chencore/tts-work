@@ -1,0 +1,5 @@
+# Shell scripts must use LF line endings so they can run in WSL2.
+*.sh text eol=lf
+
+# Batch files use CRLF as expected on Windows.
+*.bat text eol=crlf

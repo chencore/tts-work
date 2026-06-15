@@ -8,7 +8,9 @@
       "Bash(tauri dev *)",
       "Bash(cmd.exe //C \"wsl -d Ubuntu-24.04 -- bash -c 'source /home/chenke/miniconda3/etc/profile.d/conda.sh && conda activate dots_tts && python -c \\\\\"import torchaudio; print\\(torchaudio.get_audio_backend\\(\\)\\)\\\\\"'\")",
       "Bash(cmd.exe //C \"wsl -d Ubuntu-24.04 -- ps -ef | grep 'python -m backend.app' | grep -v grep || echo no-backend\")",
-      "Bash(wsl -d Ubuntu-24.04 -- bash -c \"source ~/miniconda3/etc/profile.d/conda.sh && conda activate dots_tts && cd /mnt/d/code/tts-work && python -m pytest backend/tests/test_text_splitter.py -v\")"
+      "Bash(wsl -d Ubuntu-24.04 -- bash -c \"source ~/miniconda3/etc/profile.d/conda.sh && conda activate dots_tts && cd /mnt/d/code/tts-work && python -m pytest backend/tests/test_text_splitter.py -v\")",
+      "Bash(wsl -d Ubuntu-24.04 -- ls /mnt)",
+      "Bash(wsl -d Ubuntu-24.04 -- bash -c \"ls /mnt\")"
     ]
   }
 }
